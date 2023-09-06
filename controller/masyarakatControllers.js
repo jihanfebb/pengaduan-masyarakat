@@ -1,0 +1,74 @@
+import masyarakat from "../models/masyarakatModel.js";
+import Joi from "joi";
+import bcrypt from "bcrypt";
+
+class MasyarakatController {
+    async index(req, res) {
+        const data = await masyarakat.findAll();
+        return res.json(data);
+    }
+
+    async store(req, res) {
+        const data = req.body;
+
+        const rules = Joi.object({
+            nik: Joi.required(),
+            nama: Joi.required(),
+            username: Joi.required(),
+            password: Joi.required(),
+            telp: Joi.number().required(),
+        });
+
+        const validatedData = rules.validate(data);
+        if (validatedData.error) return res.json({ msg : validatedData.error.details[0].message.replace(/"/g, '') });
+
+        if ((data.nik).includes(" ")){
+            return res.json({msg:"NIK tidak ada space"})
+        }
+
+        const hasil = await bcrypt.hash(data.password, 10)
+
+        try {
+            data.password = hasil;
+            await masyarakat.create(data);
+        } catch (e) {
+            return res.json({ msg : "NIK tidak unique" })
+        }
+
+        return res.json({ msg: "succes"});
+    }
+
+    async update (req, res) {
+        const data = req.body;
+        const masyarakat = await masyarakat.findOne({ where : { nik : req.params.id } })
+
+        if (!masyarakat) return res.json({ msg: "Tidak Ada Masyarakat" });
+
+        const rules = Joi .object({
+            nama:Joi.required(),
+            username:Joi.required(),
+            telp:Joi.required(),
+        });
+
+        const validatedData = rules.validate(data);
+        if (validatedData.error) return res.json({ msg: validatedData.error.details[0].message.replace(/"/g, '') });
+
+        await masyarakat.update(data,{where:{nik:masyarakat.nik}});
+
+        return res.json({msg:"succes"});
+
+    }
+
+    async destroy(req, res) {
+        const masyarakat = await masyarakat.findOne({ where: { nik: req.params.id } });
+
+        if (!masyarakat) return res.json({ msg: "Tidak Ada Masyarakat" });
+
+        await masyarakat.destroy({ where: {nik: masyarakat.nik } });
+        
+        return res.json({ msg: "seucces" });
+    }
+}
+
+
+export default MasyarakatController;
